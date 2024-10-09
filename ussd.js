@@ -2,7 +2,7 @@ import express from "express";
 import morgan from "morgan";
 
 const app = express();
-const sessions = {}; // In-memory session storage
+const sessions = {}; 
 
 // For logging to console
 app.use(morgan("combined"));
@@ -28,11 +28,11 @@ app.post("/ussd", (req, res) => {
   let userSession = sessions[sessionId];
 
   // Check if USERDATA contains a full or partial USSD string like "*920*1801*1#" or "*920*1801*1*1#"
-  const inputs = processUssdInput(USERDATA); // Extract inputs (e.g., ["1", "1"] or ["1"])
+  const inputs = processUssdInput(USERDATA); 
 
   // Case 3: If there is only one input (e.g., "*920*1801*1#"), skip to the second screen
   if (inputs.length === 1) {
-    const feelingChoice = inputs[0]; // First input (feeling)
+    const feelingChoice = inputs[0]; 
 
     // Process feeling choice
     if (feelingChoice === "1") {
@@ -42,6 +42,7 @@ app.post("/ussd", (req, res) => {
     } else if (feelingChoice === "3") {
       userSession.feeling = "not well";
     } else {
+      console.log (({ USERID, MSISDN, MSG: "Invalid input for feeling. Please try again.", MSGTYPE: true }));
       return res.json({
         USERID,
         MSISDN,
@@ -51,22 +52,22 @@ app.post("/ussd", (req, res) => {
     }
 
     // Move directly to the second screen (reason selection)
-    userSession.stage = 2; // Set the stage to 2
+    userSession.stage = 2; 
     const message =  `Why are you ${userSession.feeling}?\n1. Money\n2. Relationship\n3. A lot`
+    console.log(req.body);
     return res.json({
       USERID,
       MSISDN,
       MSG: message,
-      MSGTYPE: true // Indicate that the session is still ongoing
+      MSGTYPE: true 
     });
   }
 
-  // Case 2: Full USSD string with pre-selected options (e.g., "*920*1801*1*1#")
+  // Case 2: Full USSD string with pre-selected options ("*920*1801*1*1#")
   else if (inputs.length >= 2) {
-    const feelingChoice = inputs[0]; // First input (feeling)
-    const reasonChoice = inputs[1];  // Second input (reason)
-
-    // Process feeling choice
+    const feelingChoice = inputs[0]; 
+    const reasonChoice = inputs[1];  
+    
     if (feelingChoice === "1") {
       userSession.feeling = "feeling fine";
     } else if (feelingChoice === "2") {
@@ -74,6 +75,7 @@ app.post("/ussd", (req, res) => {
     } else if (feelingChoice === "3") {
       userSession.feeling = "not well";
     } else {
+      console.log(({ USERID, MSISDN, USERDATA, MSG:"Invalid input for feeling.", MSGTYPE: true }));
       return res.json({
         USERID,
         MSISDN,
@@ -82,7 +84,6 @@ app.post("/ussd", (req, res) => {
       });
     }
 
-    // Process reason choice
     if (reasonChoice === "1") {
       userSession.reason = "because of money";
     } else if (reasonChoice === "2") {
@@ -90,6 +91,7 @@ app.post("/ussd", (req, res) => {
     } else if (reasonChoice === "3") {
       userSession.reason = "because of a lot";
     } else {
+      console.log(({ USERID, MSISDN, USERDATA, MSG: "Invalid input for reason. Please try again.", MSGTYPE: true }))
       return res.json({
         USERID,
         MSISDN,
@@ -100,28 +102,27 @@ app.post("/ussd", (req, res) => {
 
     // Final message, summarize and end session
     const finalMessage = `You are ${userSession.feeling} ${userSession.reason}.`
-
-    res.json({
+    console.log(req.body);
+      return res.json({
       USERID,
       MSISDN,
       MSG: finalMessage,
-      MSGTYPE: false // Final message, end session
+      MSGTYPE: false 
     });
-
-    // Delete the session after the interaction is completed
+  
     delete sessions[sessionId];
   }
-  // Case 1: Step-by-step interaction (e.g., "*920*1801#")
+  // Case 1: Step-by-step interaction ("*920*1801#")
   else if (MSGTYPE) {
-    // First screen
+    
     const message = `Welcome to ${USERID} application\nHow are you feeling today?\n1. Feeling fine\n2. Feeling frisky\n3. Not well`
-    userSession.stage = 1; // Set the stage to 1
-
-    res.json({
+    userSession.stage = 1; 
+    console.log(req.body);
+    return res.json({
       USERID,
       MSISDN,
       MSG: message,
-      MSGTYPE: true, // Indicate that the session is still ongoing
+      MSGTYPE: true, 
     });
   } else {
     // Handle the interaction based on the current stage
@@ -134,18 +135,19 @@ app.post("/ussd", (req, res) => {
       } else if (USERDATA === "3") {
         feeling = "not well";
       } else {
-        // Invalid input, repeat the first screen
-        res.json({
+
+        console.log(({ USERID, MSISDN, MSG: "Invalid input, please try again", MSGTYPE: true }));
+        
+        return res.json({
           USERID,
           MSISDN,
           MSG: "Invalid input, please try again.\nHow are you feeling today?\n1. Feeling fine\n2. Feeling frisky\n3. Not well",
           MSGTYPE: true,
         });
-        return;
       }
 
       userSession.feeling = feeling;
-      userSession.stage = 2; // Move to stage 2
+      userSession.stage = 2; 
 
       const message = `Why are you ${feeling}?\n1. Money\n2. Relationship\n3. A lot`
       res.json({
@@ -163,8 +165,10 @@ app.post("/ussd", (req, res) => {
       } else if (USERDATA === "3") {
         reason = "because of a lot";
       } else {
-        // Invalid input, repeat the second screen
-        res.json({
+
+        console.log(({ USERID, MSISDN, MSG: "Invalid input, please try again", MSGTYPE: true }));
+
+        return res.json({
           USERID,
           MSISDN,
           MSG: `Invalid input, please try again.\nWhy are you ${userSession.feeling}?\n1. Money\n2. Relationship\n3. A lot`,
@@ -182,10 +186,9 @@ app.post("/ussd", (req, res) => {
         USERID,
         MSISDN,
         MSG: finalMessage,
-        MSGTYPE: false, // Final message, end session
+        MSGTYPE: false, 
       });
 
-      // Delete the session after the interaction is completed
       delete sessions[sessionId];
     }
   }
